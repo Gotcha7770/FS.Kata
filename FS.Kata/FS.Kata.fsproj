@@ -6,7 +6,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Program.fs"/>
+        <Compile Include="Refactor_CSharp_Code_Kata.fs" />
+        <Compile Include="Main.fs" />
     </ItemGroup>
 
 </Project>

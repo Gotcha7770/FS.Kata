@@ -1,3 +1,6 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Refactor_CSharp_Code_Kata_Reference.cs" />
+  </Folder>
   <Project Path="FS.Kata.fsproj" />
 </Solution>
