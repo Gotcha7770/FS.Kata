@@ -38,10 +38,10 @@ let a6 = 2 + 2 |> (is 4 |> (truth' >> lie'))
 
 open System
 
-type Selector<'a> = private Selector of (Entrances -> 'a)
+type Selector<'a> = private Selector of (unit -> 'a)
 
-and Entrances() =
-    let run (Selector f) state = f state
+type Entrances() =
+    let run (Selector f) = f ()
 
     let shuffle (list: 'a list) =
         let array = List.toArray list
@@ -64,20 +64,20 @@ and Entrances() =
     let guards = shuffle [ Honest; Liar ]
 
     member private _.LeftDoorValue = doors[0]
-    member _.LeftDoor = Selector _.LeftDoorValue
+    member this.LeftDoor = Selector(fun () -> this.LeftDoorValue)
     member private _.RightDoorValue = doors[1]
-    member _.RightDoor = Selector _.RightDoorValue
+    member this.RightDoor = Selector(fun () -> this.RightDoorValue)
 
     member private _.LeftGuard = guards[0]
     member private _.RightGuard = guards[1]
 
     member this.AskLeftGuard predicate selector =
-        let value = run selector this
+        let value = run selector
 
         answer this.LeftGuard predicate value
 
     member this.AskRightGuard predicate selector =
-        let value = run selector this
+        let value = run selector
 
         answer this.RightGuard predicate value
 
@@ -91,4 +91,10 @@ let a7 = Selector.from (2 + 2) |> (is 4 |> state.AskLeftGuard)
 
 // Questions about private state
 let a8 = state.LeftDoor |> (is Hell |> state.AskLeftGuard)
-let a9 = state.LeftDoor |> (is Hell |> (state.AskLeftGuard >> state.AskRightGuard))
+
+let a9 =
+    state.LeftDoor
+    |> (is Hell |> state.AskLeftGuard)
+    |> Selector.from
+    |> (is true |> state.AskRightGuard)
+//let a9 = state.LeftDoor |> (is Hell |> (state.AskLeftGuard >> state.AskRightGuard))
