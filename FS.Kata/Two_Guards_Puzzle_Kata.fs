@@ -63,6 +63,8 @@ and Entrances() =
     let doors = shuffle [ Paradise; Hell ]
     let guards = shuffle [ Honest; Liar ]
 
+    let mutable isCollapsed = false
+
     member private _.LeftDoorValue = doors[0]
     member _.LeftDoor = Selector _.LeftDoorValue
     member private _.RightDoorValue = doors[1]
@@ -77,7 +79,12 @@ and Entrances() =
     member _.AskRightGuard predicate selector =
         Selector(fun env -> answer env.RightGuard predicate (run selector env))
 
-    member _.Reveal (selector: Selector<bool>) = run selector
+    member this.Reveal (selector: Selector<bool>) =
+        if isCollapsed then
+            Result.Error "The puzzle is already solved"
+            else
+            isCollapsed <- true
+            Result.Ok (run selector this)
 
 let state = Entrances()
 
@@ -85,10 +92,10 @@ module Selector =
     let from value = Selector(fun _ -> value)
 
 // Questions to private Guard
-let a7 = (Selector.from (2 + 2) |> (is 4 |> state.AskLeftGuard) |> state.Reveal) state
+let a7 = Selector.from (2 + 2) |> (is 4 |> state.AskLeftGuard) |> state.Reveal
 
 // Questions about private state
-let a8 = (state.LeftDoor |> (is Hell |> state.AskLeftGuard) |> state.Reveal) state
+let a8 = state.LeftDoor |> (is Hell |> state.AskLeftGuard) |> state.Reveal
 //let a8 = state.AskLeftGuard <| is Hell <| state.LeftDoor |> state.Reveal <| state
 
 // let a9 =
@@ -98,7 +105,7 @@ let a8 = (state.LeftDoor |> (is Hell |> state.AskLeftGuard) |> state.Reveal) sta
 //     |> state.Reveal <| state
 
 //let a9 = (state.LeftDoor |> ((is Hell |> state.AskLeftGuard) >> (is true |> state.AskRightGuard)) |> state.Reveal) state
-let a9 = state.AskRightGuard <| is true << (state.AskLeftGuard <| is Hell) <| state.LeftDoor |> state.Reveal <| state
+let a9 = state.AskRightGuard <| is true << (state.AskLeftGuard <| is Hell) <| state.LeftDoor |> state.Reveal
 
 // Quantum state
-let a10 = state.Reveal state.LeftDoor <| state
+let a10 = state.Reveal state.LeftDoor
