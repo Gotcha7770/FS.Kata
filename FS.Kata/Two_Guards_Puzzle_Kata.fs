@@ -77,18 +77,12 @@ and Entrances() =
     member _.AskRightGuard predicate selector =
         Selector(fun env -> answer env.RightGuard predicate (run selector env))
 
-    member _.Reveal selector = run selector
+    member _.Reveal (selector: Selector<bool>) = run selector
 
 let state = Entrances()
 
 module Selector =
     let from value = Selector(fun _ -> value)
-    let map f (Selector g) = Selector(g >> f)
-
-    let bind (f: 'a -> Selector<'b>) (Selector g) =
-        Selector(fun env ->
-            let (Selector h) = f (g env)
-            h env)
 
 // Questions to private Guard
 let a7 = (Selector.from (2 + 2) |> (is 4 |> state.AskLeftGuard) |> state.Reveal) state
