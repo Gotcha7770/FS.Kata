@@ -38,7 +38,6 @@ record Order
     public required string Id { get; init; }
     public bool IsVerified { get; init; }
     public ICollection<OrderItem> Items { get; init; } = [];
-    
     public string Status { get; set; }
     public bool IsProcessed { get; set; }
 }
