@@ -1,9 +1,8 @@
 module FS.Kata.Kata_1
 
-// Refactor code from Refactor_CSharp_Code_Kata_Reference.cs
+open System
 
-[<Literal>]
-let MaxItemsPerOrder = 15
+// Refactor code from Refactor_CSharp_Code_Kata_Reference.cs
 
 type OrderItem = { Id: string }
 
@@ -15,22 +14,46 @@ type OrderInfo =
       Items: OrderItem list }
 
 type OrderId = OrderId of string
-type OrderItems = OrderId of string
+type OrderItems = private OrderItems of OrderItem list
+
+module OrderItems =
+    [<Literal>]
+    let MaxCount = 15
+
+    let create items =
+        match items with
+        | [] -> Error "Order must have at least one item"
+        | list ->
+            let length = List.length list
+            if length > MaxCount then Error $"Order must have no more than {MaxCount} items"
+            else Ok(OrderItems items)
+
+type UnverifiedOrder =
+    { Id: OrderId
+      Items: OrderItem list }
+
+type VerifiedOrder =
+    private { Id: OrderId
+              Items: OrderItems }
+
+type ProcessedOrder =
+    private { Order: VerifiedOrder
+              ProcessedAt: DateTimeOffset }
+
+let verify (order: UnverifiedOrder) =
+    OrderItems.create order.Items
+    |> Result.map (fun items -> { Id = order.Id; Items = items })
+
+let processOrder now order  =
+    { Order = order; ProcessedAt = now }
 
 type Order =
-    | NotVerified of OrderId * OrderItems
-    | ReadyToProcess of OrderInfo
-    | Processed of OrderInfo
+    | Unverified of UnverifiedOrder
+    | Verified of VerifiedOrder
+    | Processed of ProcessedOrder
 
-let validate order =
-    if order.Items.Length > MaxItemsPerOrder then
-        Error $"The order {order.Id} has too many items"
-    else
-        Ok order
-
-let processOrder (order: Order option) =
-    order |> Option.map (fun x ->
-        match x with
-        | NotVerified (id, items) -> Error $"The order {id} isn't ready to process"
-        | ReadyToProcess orderInfo -> validate orderInfo |> Result.map Processed
-        | Processed _ -> Ok x)
+let advance now order =
+    match order with
+    | Unverified o -> verify o |> Result.map Verified
+    | Verified o -> processOrder now o |> Processed |> Ok
+    | Processed _ -> Ok order
