@@ -1,5 +1,7 @@
 module FS.Kata.Two_Guards_Puzzle_Kata
 
+open System
+
 // There are two doors. One leads to paradise, the other to hell.
 // There are two guards. One always tells the truth, and the other always lies.
 // You may ask one guard one question to determine the correct door.
@@ -36,67 +38,55 @@ let a4 = 2 + 2 |> (is 4 |> lie')
 let a5 = 2 + 2 |> (is 4 >> truth >> lie)
 let a6 = 2 + 2 |> (is 4 |> (truth' >> lie'))
 
-open System
+let answer guard =
+    match guard with
+    | Honest -> truth'
+    | Liar -> lie'
 
-type Selector<'a> = private Selector of (Entrances -> 'a)
+let randomPair (a: 'a, b: 'a) : 'a * 'a =
+    if Random.Shared.Next(2) = 0 then a, b else b, a
 
-and Entrances() =
-    let run (Selector f) entrances = f entrances
+type Reader<'env, 'a> = Reader of ('env -> 'a)
 
-    let shuffle (list: 'a list) =
-        let array = List.toArray list
-        let random = Random()
+module Reader =
+    let from value = Reader(fun _ -> value)
 
-        for i = array.Length - 1 downto 1 do
-            let j = random.Next(i + 1)
-            let tmp = array.[i]
-            array.[i] <- array.[j]
-            array.[j] <- tmp
-
-        Array.toList array
-
-    let answer guard =
-        match guard with
-        | Honest -> truth'
-        | Liar -> lie'
-
-    let doors = shuffle [ Paradise; Hell ]
-    let guards = shuffle [ Honest; Liar ]
+type Entrances() =
+    let run (Reader f: Reader<Entrances, 'a>) entrances = f entrances
 
     let mutable isCollapsed = false
+    let doors = randomPair (Hell, Paradise)
+    let guards = randomPair (Honest, Liar)
 
-    member private _.LeftDoorValue = doors[0]
-    member _.LeftDoor = Selector _.LeftDoorValue
-    member private _.RightDoorValue = doors[1]
-    member _.RightDoor = Selector _.RightDoorValue
+    member private _.LeftDoorValue = fst doors
+    member _.LeftDoor = Reader(fun (env: Entrances) -> env.LeftDoorValue)
+    member private _.RightDoorValue = snd doors
+    member _.RightDoor = Reader(fun (env: Entrances) -> env.RightDoorValue)
 
-    member private _.LeftGuard = guards[0]
-    member private _.RightGuard = guards[1]
+    member private _.LeftGuard = fst guards
+    member private _.RightGuard = snd guards
 
-    member _.AskLeftGuard predicate selector =
-        Selector(fun env -> answer env.LeftGuard predicate (run selector env))
+    member _.AskLeftGuard predicate reader =
+        Reader(fun (env: Entrances) -> answer env.LeftGuard predicate (run reader env))
 
-    member _.AskRightGuard predicate selector =
-        Selector(fun env -> answer env.RightGuard predicate (run selector env))
+    member _.AskRightGuard predicate reader =
+        Reader(fun (env: Entrances) -> answer env.RightGuard predicate (run reader env))
 
-    member this.Reveal (selector: Selector<bool>) =
+    member this.Reveal(reader: Reader<Entrances, bool>) =
         if isCollapsed then
             Result.Error "The puzzle is already solved"
-            else
+        else
             isCollapsed <- true
-            Result.Ok (run selector this)
+            Result.Ok(run reader this)
 
 let state = Entrances()
 
-module Selector =
-    let from value = Selector(fun _ -> value)
-
 // Questions to private Guard
-let a7 = Selector.from (2 + 2) |> (is 4 |> state.AskLeftGuard) |> state.Reveal
+let a7 = Reader.from (2 + 2) |> (is 4 |> state.AskLeftGuard) |> state.Reveal
 
 // Questions about private state
 let a8 = state.LeftDoor |> (is Hell |> state.AskLeftGuard) |> state.Reveal
-//let a8 = state.AskLeftGuard <| is Hell <| state.LeftDoor |> state.Reveal <| state
+//let a8 = state.AskLeftGuard <| is Hell <| state.LeftDoor |> state.Reveal
 
 // let a9 =
 //     state.LeftDoor
@@ -104,8 +94,11 @@ let a8 = state.LeftDoor |> (is Hell |> state.AskLeftGuard) |> state.Reveal
 //     |> (is true |> state.AskRightGuard)
 //     |> state.Reveal <| state
 
-//let a9 = (state.LeftDoor |> ((is Hell |> state.AskLeftGuard) >> (is true |> state.AskRightGuard)) |> state.Reveal) state
-let a9 = state.AskRightGuard <| is true << (state.AskLeftGuard <| is Hell) <| state.LeftDoor |> state.Reveal
+//let a9 = state.LeftDoor |> ((is Hell |> state.AskLeftGuard) >> (is true |> state.AskRightGuard)) |> state.Reveal
+let a9 =
+    state.AskRightGuard <| is true << (state.AskLeftGuard <| is Hell)
+    <| state.LeftDoor
+    |> state.Reveal
 
 // Quantum state
-let a10 = state.Reveal state.LeftDoor
+//let a10 = state.Reveal state.LeftDoor
