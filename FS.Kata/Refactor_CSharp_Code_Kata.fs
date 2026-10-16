@@ -1,4 +1,4 @@
-module FS.Kata.Kata_1
+module FS.Kata.Kata_1open
 
 open System
 
@@ -6,54 +6,31 @@ open System
 
 type OrderItem = { Id: string }
 
-// parse don`t validate
-// https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/
-
-type OrderInfo =
-    { Id: string
-      Items: OrderItem list }
-
-type OrderId = OrderId of string
-type OrderItems = private OrderItems of OrderItem list
-
 module OrderItems =
     [<Literal>]
-    let MaxCount = 15
+    let private MaxItems = 15
 
-    let create items =
+    type OrderItems = private OrderItems of OrderItem list
+
+    let create (items: OrderItem list) =
         match items with
         | [] -> Error "Order must have at least one item"
         | list ->
-            let length = List.length list
-            if length > MaxCount then Error $"Order must have no more than {MaxCount} items"
-            else Ok(OrderItems items)
+            if list.Length > MaxItems then Error $"Order must have less than {MaxItems} items"
+            else Ok (OrderItems list)
 
-type UnverifiedOrder =
-    { Id: OrderId
-      Items: OrderItem list }
+module Order =
 
-type VerifiedOrder =
-    private { Id: OrderId
-              Items: OrderItems }
+    open OrderItems
 
-type ProcessedOrder =
-    private { Order: VerifiedOrder
-              ProcessedAt: DateTimeOffset }
+    type Order =
+        private
+        | Verified of Id: string * OrderItem list
+        | ReadyToProcess of Id: string * Items: OrderItems
+        | Processed of Id: string * ProcessedAt: DateTime
 
-let verify (order: UnverifiedOrder) =
-    OrderItems.create order.Items
-    |> Result.map (fun items -> { Id = order.Id; Items = items })
-
-let processOrder now order  =
-    { Order = order; ProcessedAt = now }
-
-type Order =
-    | Unverified of UnverifiedOrder
-    | Verified of VerifiedOrder
-    | Processed of ProcessedOrder
-
-let advance now order =
-    match order with
-    | Unverified o -> verify o |> Result.map Verified
-    | Verified o -> processOrder now o |> Processed |> Ok
-    | Processed _ -> Ok order
+    let dispatch (order: Order) =
+        match order with
+        | Verified (id, items) -> create items |> Result.map (fun x -> ReadyToProcess (id, x))
+        | ReadyToProcess (id, _) -> Processed (id, DateTime.Now) |> Ok
+        | Processed _ -> Ok order
